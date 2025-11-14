@@ -108,5 +108,15 @@ Estrutura clara para expandir (mais sensores, automações, dashboards, etc.)
 # Fotos:
 <img width="677" height="755" alt="image" src="https://github.com/user-attachments/assets/6a412217-449a-4cc2-8f9b-146f8a22b835" />
 <img width="961" height="857" alt="image" src="https://github.com/user-attachments/assets/e6cfc00e-d04b-49c4-86b0-88246c9ec97b" />
+<img width="915" height="290" alt="image" src="https://github.com/user-attachments/assets/89e4a773-a545-486f-9711-48f1f4e50ade" />
+<img width="982" height="424" alt="image" src="https://github.com/user-attachments/assets/38ed8508-6560-458c-bb7e-7094bcffead0" />
+<img width="702" height="366" alt="image" src="https://github.com/user-attachments/assets/60d7b75d-43ff-4422-8863-08bd8abba2e2" />
+<img width="432" height="163" alt="image" src="https://github.com/user-attachments/assets/c693f437-3760-4b95-bb7f-2ffc40a90c5c" />
+<img width="826" height="558" alt="image" src="https://github.com/user-attachments/assets/c27d3cbe-21f0-443a-a270-9387b9fdd2b0" />
+<img width="472" height="219" alt="image" src="https://github.com/user-attachments/assets/840af3ad-f165-4874-b966-1625885f2e59" />
+
+
+
+
 
 
