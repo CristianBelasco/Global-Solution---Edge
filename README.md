@@ -1,4 +1,8 @@
 # Global-Solution---Edge
+# Grupo:
+Cristian Belasco Arancibia RM:565710
+Victor Antonio Teixeira da Silva Rm: 562573
+Lucas Oliveira de Mendonça Almeida RM:562613
 # Link para o projeto:
 https://wokwi.com/projects/447539582011144193
 # Link para o video:
