@@ -1,0 +1,230 @@
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+//////////////////////////////
+// DEFINIÇÕES (Pinos e limites)
+//////////////////////////////
+
+// DHT
+#define DHTPIN   15
+#define DHTTYPE  DHT22  // use DHT11 se for o caso
+
+// Ultrassônico
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+
+// LEDs e buzzer
+#define LED_R    25   // LED vermelho
+#define LED_G    26   // LED verde
+#define LED_Y    27   // LED amarelo
+#define BUZZER   4
+
+// Limites de conforto (ajustáveis)
+float TEMP_CONF_MIN = 18.0;
+float TEMP_CONF_MAX = 24.0;
+float TEMP_WARN_MAX = 30.0;
+
+int DIST_CRITICO = 20; // cm  (muito perto)
+int DIST_WARN    = 40; // cm  (atenção)
+
+unsigned long lastMsg = 0;
+const long interval = 5000; // 5 s entre leituras/publicações
+
+//////////////////////////////
+// CONFIG WIFI E MQTT (Wokwi)
+//////////////////////////////
+
+// WiFi do Wokwi
+const char* ssid     = "Wokwi-GUEST";
+const char* password = "";
+
+// Broker MQTT público
+const char* mqttServer = "broker.hivemq.com"; // pode trocar se quiser
+const int   mqttPort   = 1883;
+
+const char* topicEnv   = "gs2025/office1/env";
+const char* topicAlert = "gs2025/office1/alert";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+//////////////////////////////
+// OBJETOS DOS SENSORES
+//////////////////////////////
+
+DHT dht(DHTPIN, DHTTYPE);
+
+//////////////////////////////
+// FUNÇÕES AUXILIARES
+//////////////////////////////
+
+// Liga/desliga cada LED (r = vermelho, g = verde, y = amarelo)
+void setColor(bool r, bool g, bool y) {
+  digitalWrite(LED_R, r ? HIGH : LOW);
+  digitalWrite(LED_G, g ? HIGH : LOW);
+  digitalWrite(LED_Y, y ? HIGH : LOW);
+}
+
+// Lê distância do ultrassônico em cm
+float readDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(3);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  float distance = duration * 0.034 / 2.0; // velocidade do som ~0.034 cm/us
+  return distance;
+}
+
+void setupWiFi() {
+  Serial.print("Conectando ao WiFi ");
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi conectado!");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void reconnectMQTT() {
+  // só tenta MQTT se tiver WiFi
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi nao conectado, nao vou tentar MQTT ainda.");
+    return;
+  }
+
+  while (!client.connected()) {
+    Serial.print("Conectando ao MQTT...");
+    String clientId = "ESP32-GS2025-";
+    clientId += String(random(0xffff), HEX);
+
+    if (client.connect(clientId.c_str())) {
+      Serial.println(" conectado!");
+      // se quiser, pode dar subscribe em algum tópico aqui
+    } else {
+      Serial.print(" falhou, rc=");
+      Serial.println(client.state());
+      delay(2000);
+    }
+  }
+}
+
+//////////////////////////////
+// SETUP
+//////////////////////////////
+
+void setup() {
+  Serial.begin(115200);
+
+  dht.begin();
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  pinMode(LED_R, OUTPUT);
+  pinMode(LED_G, OUTPUT);
+  pinMode(LED_Y, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  digitalWrite(BUZZER, LOW);
+  setColor(false, false, false);
+
+  setupWiFi();
+  client.setServer(mqttServer, mqttPort);
+}
+
+//////////////////////////////
+// LOOP PRINCIPAL
+//////////////////////////////
+
+void loop() {
+  if (!client.connected()) {
+    reconnectMQTT();
+  }
+  client.loop();
+
+  unsigned long now = millis();
+  if (now - lastMsg < interval) return;
+  lastMsg = now;
+
+  float temp     = dht.readTemperature();
+  float hum      = dht.readHumidity();
+  float distance = readDistance();
+
+  Serial.print("temperatura: ");
+  Serial.print(temp);
+  Serial.print(" °C | humidade: ");
+  Serial.print(hum);
+  Serial.print(" % | distancia: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Níveis: 0 = verde, 1 = amarelo, 2 = vermelho
+  int nivelTemp = 0;
+  int nivelDist = 0;
+
+  // Temperatura
+  if (temp > TEMP_CONF_MAX && temp <= TEMP_WARN_MAX) {
+    nivelTemp = 1; // atenção
+  }
+  if (temp > TEMP_WARN_MAX) {
+    nivelTemp = 2; // crítico
+  }
+
+  // Distância
+  if (distance <= DIST_WARN && distance > DIST_CRITICO) {
+    nivelDist = 1; // atenção
+  }
+  if (distance <= DIST_CRITICO) {
+    nivelDist = 2; // crítico
+  }
+
+  // pega o pior nível
+  int nivel = max(nivelTemp, nivelDist);
+
+  String status = "comfort";
+
+  if (nivel == 0) {        // VERDE
+    setColor(false, true, false); // verde
+    digitalWrite(BUZZER, LOW);
+    status = "comfort";
+  } else if (nivel == 1) { // AMARELO
+    setColor(false, false, true); // amarelo
+    digitalWrite(BUZZER, LOW);
+    status = "warning";
+  } else {                 // VERMELHO
+    setColor(true, false, false); // vermelho
+    digitalWrite(BUZZER, HIGH);
+    status = "critical";
+
+    // alerta separado
+    StaticJsonDocument<200> alertJson;
+    alertJson["level"]   = "critical";
+    alertJson["message"] = "Temperatura ou distancia critica - verificar ambiente";
+    char bufferAlert[200];
+    serializeJson(alertJson, bufferAlert);
+    client.publish(topicAlert, bufferAlert);
+  }
+
+  // JSON com leituras gerais
+  StaticJsonDocument<300> doc;
+  doc["temperature"] = temp;
+  doc["humidity"]    = hum;
+  doc["distance"]    = distance;
+  doc["status"]      = status;
+
+  char buffer[300];
+  serializeJson(doc, buffer);
+  client.publish(topicEnv, buffer);
+}
