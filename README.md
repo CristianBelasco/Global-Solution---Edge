@@ -8,6 +8,7 @@ Lucas Oliveira de Mendonça Almeida RM:562613
 # Link para o projeto:
 https://wokwi.com/projects/447539582011144193
 # Link para o video:
+https://youtu.be/4_TWjIV2e8A
 
 # Sistema de Monitoramento Sustentável – Global Solutions 2025
 
