@@ -104,3 +104,9 @@ JSON publicado em tópicos MQTT
 Lógica simples de “conforto → atenção → alerta”
 
 Estrutura clara para expandir (mais sensores, automações, dashboards, etc.)
+
+# Fotos:
+<img width="677" height="755" alt="image" src="https://github.com/user-attachments/assets/6a412217-449a-4cc2-8f9b-146f8a22b835" />
+<img width="961" height="857" alt="image" src="https://github.com/user-attachments/assets/e6cfc00e-d04b-49c4-86b0-88246c9ec97b" />
+
+
